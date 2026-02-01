@@ -7,13 +7,7 @@ import { OrbitControls, Stage, Html, ContactShadows, useGLTF } from '@react-thre
  * Add your filenames here (without .glb). 
  * In a real-world scenario, you could fetch this list from an API.
  */
-const MODEL_NAMES = ["SOFA-1", "SOFA-2"]; 
-const COLORS = [
-  { name: 'Graphite', value: '#2c3e50' },
-  { name: 'Ocean', value: '#2980b9' },
-  { name: 'Sand', value: '#d35400' },
-  { name: 'Forest', value: '#27ae60' },
-];
+const MODEL_NAMES = ["SOFA-1", "SOFA-2"];
 
 // --- 3D Model Component ---
 function Model({ url, color }) {
@@ -39,7 +33,6 @@ function Model({ url, color }) {
 // --- Main App Component ---
 export default function App() {
   const [selectedModel, setSelectedModel] = useState(MODEL_NAMES[0]);
-  const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', background: '#f5f5f5', fontFamily: 'sans-serif' }}>
@@ -47,7 +40,7 @@ export default function App() {
       {/* UI PANEL */}
       <div style={{ width: '350px', padding: '30px', background: 'white', zIndex: 10, boxShadow: '2px 0 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: '700', margin: '0 0 10px 0' }}>Furniture Configurator</h1>
-        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '30px' }}>Select a model and customize materials.</p>
+        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '30px' }}>Select a model.</p>
 
         <section style={{ marginBottom: '30px' }}>
           <label style={{ display: 'block', fontWeight: '600', marginBottom: '10px' }}>Sofa Model</label>
@@ -70,27 +63,6 @@ export default function App() {
           </div>
         </section>
 
-        <section>
-          <label style={{ display: 'block', fontWeight: '600', marginBottom: '10px' }}>Fabric Color</label>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {COLORS.map((c) => (
-              <button
-                key={c.value}
-                onClick={() => setSelectedColor(c.value)}
-                title={c.name}
-                style={{
-                  width: '40px', height: '40px', borderRadius: '50%', border: selectedColor === c.value ? '2px solid #000' : '2px solid transparent',
-                  background: c.value, cursor: 'pointer', padding: '2px', backgroundClip: 'content-box'
-                }}
-              />
-            ))}
-          </div>
-        </section>
-
-        <div style={{ marginTop: 'auto', padding: '20px', background: '#f9f9f9', borderRadius: '8px' }}>
-          <p style={{ margin: 0, fontSize: '0.8rem', color: '#888' }}>Total Configuration:</p>
-          <p style={{ margin: '5px 0 0 0', fontWeight: 'bold' }}>{selectedModel} / {COLORS.find(c => c.value === selectedColor).name}</p>
-        </div>
       </div>
 
       {/* 3D VIEWPORT */}
@@ -101,7 +73,6 @@ export default function App() {
             <Stage environment="city" intensity={0.6} contactShadow={false}>
               <Model 
                 url={`/models/sofas/${selectedModel}.glb`} // Added /sofas/
-                color={selectedColor} 
               />
             </Stage>
             <ContactShadows position={[0, -0.01, 0]} opacity={0.4} scale={10} blur={2} far={1} />
