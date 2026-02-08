@@ -25,9 +25,9 @@ export const PublicLayout = ({ children, activeView, onNavigate, user, onLogout 
                <div className="w-6 h-6 bg-current" style={{ color: COLORS.petrolBlue, clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 40% 40%, 40% 60%, 60% 60%, 60% 40%, 40% 40%)' }}></div>
             </div>
             <nav className="hidden md:flex gap-8 text-sm font-bold text-gray-600">
-              <button onClick={() => onNavigate(AppView.PUBLIC)} className="hover:text-teal-600 transition">الرئيسية</button>
-              <button onClick={() => onNavigate(AppView.THEMES_GALLERY)} className="hover:text-teal-600 transition">الثيمات</button>
-              <button onClick={() => onNavigate(AppView.CONFIGUTATOR)} className="hover:text-teal-600 transition">مكون</button>
+              <button onClick={() => onNavigate(AppView.PUBLIC)} className="cursor-pointer hover:text-teal-600 transition">الرئيسية</button>
+              <button onClick={() => onNavigate(AppView.THEMES_GALLERY)} className="cursor-pointer hover:text-teal-600 transition">الثيمات</button>
+              <button onClick={() => onNavigate(AppView.CONFIGUTATOR)} className="cursor-pointer hover:text-teal-600 transition">مكون</button>
               <a href="#" className="hover:text-teal-600 transition">المنتجات</a>
               <a href="#" className="hover:text-teal-600 transition">عن المنصة</a>
             </nav>

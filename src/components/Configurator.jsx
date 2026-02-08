@@ -7,7 +7,7 @@ import { OrbitControls, Stage, Html, ContactShadows, useGLTF } from '@react-thre
  * Add your filenames here (without .glb). 
  * In a real-world scenario, you could fetch this list from an API.
  */
-const MODEL_NAMES = ["SOFA-1", "SOFA-2"];
+const MODEL_NAMES = ["SOFA-1", "SOFA-2", "Arm-Chair-1", "Arm-Chair-2", "SOFA-4", "SOFA-5", "SQUARE-SOFA", "YELLOW-SOFA", "Double-Sofa"];
 
 // --- 3D Model Component ---
 function Model({ url, color }) {
@@ -49,10 +49,11 @@ const Configurator = () => {
               <button
                 key={m}
                 onClick={() => setSelectedModel(m)}
+                className="uppercase"
                 style={{
                   padding: '12px', border: '1px solid', borderRadius: '4px', cursor: 'pointer',
-                  borderColor: selectedModel === m ? '#000' : '#ddd',
-                  background: selectedModel === m ? '#000' : 'white',
+                  borderColor: selectedModel === m ? '#00786f' : '#ddd',
+                  background: selectedModel === m ? '#00786f' : 'white',
                   color: selectedModel === m ? 'white' : '#000',
                   transition: 'all 0.2s'
                 }}
@@ -71,11 +72,15 @@ const Configurator = () => {
           <Suspense fallback={<Html center><h2>Loading Design...</h2></Html>}>
             {/* Stage provides studio lighting and centers the model automatically */}
             <Stage environment="city" intensity={0.6} contactShadow={false}>
-              <Model 
-                url={`/models/sofas/${selectedModel}.glb`} // Added /sofas/
-              />
+              <group scale={0.5}> {/* Forces the model to half size before Stage calculates bounds */}
+                <Model url={`/models/sofas/${selectedModel}.glb`} />
+              </group>
+              {/* <Model 
+                url={`/models/sofas/${selectedModel}.glb`}
+                scale={0.5}
+              /> */}
             </Stage>
-            <ContactShadows position={[0, -0.01, 0]} opacity={0.4} scale={10} blur={2} far={1} />
+            <ContactShadows position={[0, -0.01, 0]} opacity={0.4} scale={7} blur={2} far={1} />
           </Suspense>
           <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 1.8} />
         </Canvas>
