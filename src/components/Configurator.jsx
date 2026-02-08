@@ -85,7 +85,9 @@ const Configurator = () => {
           <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 1.8} />
         </Canvas>
       </div>
+      <div style={{ width: '10%'}}>
 
+      </div>
     </div>
   );
 }
