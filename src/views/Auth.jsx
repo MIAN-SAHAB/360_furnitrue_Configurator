@@ -5,11 +5,11 @@ import { COLORS } from '../constants';
 import { UserRole } from '../types';
 
 export const Auth = ({ onLogin, onNavigate }) => {
-  const [mode, setMode] = useState<'login' | 'register' | 'reset' | 'verification_sent'>('login');
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<UserRole>(UserRole.CUSTOMER);
+  const [role, setRole] = useState(UserRole.CUSTOMER);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isResending, setIsResending] = useState(false);

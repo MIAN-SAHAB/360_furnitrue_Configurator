@@ -20,9 +20,8 @@ export const PublicLayout = ({ children, activeView, onNavigate, user, onLogout 
       <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNavigate(AppView.PUBLIC)}>
-               <span className="text-2xl font-bold tracking-tighter" style={{ color: COLORS.petrolBlue }}>360</span>
-               <div className="w-6 h-6 bg-current" style={{ color: COLORS.petrolBlue, clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, 40% 40%, 40% 60%, 60% 60%, 60% 40%, 40% 40%)' }}></div>
+            <div className="flex items-center gap-2 cursor-pointer w-[150px]" onClick={() => onNavigate(AppView.PUBLIC)}>
+              <img src="assets/360 logo.png" alt="" />
             </div>
             <nav className="hidden md:flex gap-8 text-sm font-bold text-gray-600">
               <button onClick={() => onNavigate(AppView.PUBLIC)} className="cursor-pointer hover:text-teal-600 transition">الرئيسية</button>
