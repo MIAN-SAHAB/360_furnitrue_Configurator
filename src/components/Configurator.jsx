@@ -8,7 +8,7 @@ import ARViewer from './ARViewer';
  * Add your filenames here (without .glb). 
  * In a real-world scenario, you could fetch this list from an API.
  */
-const MODEL_NAMES = ["SOFA-1", "SOFA-2", "Arm-Chair-1", "Arm-Chair-2", "SOFA-4", "SOFA-5", "SQUARE-SOFA", "YELLOW-SOFA", "Double-Sofa", "K01-1s-PS", "K01-2s-PS", "K01-3s-1rL-oD-GS"];
+const MODEL_NAMES = ["SOFA-1-PARTS", "KLUN-STYLE-SOFA", "SOFA-1", "SOFA-2", "Arm-Chair-1", "Arm-Chair-2", "SOFA-4", "SOFA-5", "SQUARE-SOFA", "YELLOW-SOFA", "Double-Sofa", "K01-1s-PS", "K01-2s-PS", "K01-3s-1rL-oD-GS"];
 
 // --- 3D Model Component ---
 function Model({ url, color }) {
@@ -39,13 +39,7 @@ const Configurator = () => {
 
   if (arMode) {
     return (
-      <div style={{ width: '99vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
-        <button
-          onClick={() => setArMode(false)}
-          style={{ position: 'absolute', top: 24, right: 24, zIndex: 20, padding: '10px 18px', borderRadius: 6, border: '1px solid #00786f', background: '#fff', color: '#00786f', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #0001' }}
-        >
-          Exit AR Mode
-        </button>
+      <div className="w-full h-screen overflow-hidden relative">
         <ARViewer
           modelUrl={`/models/sofas/${selectedModel}.glb`}
           modelNames={MODEL_NAMES}
@@ -57,22 +51,22 @@ const Configurator = () => {
   }
 
   return (
-    <div style={{ width: '99vw', height: '100vh', display: 'flex', background: '#f5f5f5', fontFamily: 'sans-serif' }}>
+    <div className="w-full min-h-[calc(100vh-72px)] md:h-screen flex flex-col md:flex-row bg-[#f5f5f5]">
       {/* UI PANEL */}
-      <div style={{ width: '20%', padding: '30px', background: 'white', zIndex: 10, boxShadow: '2px 0 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: '700', margin: '0 0 10px 0' }}>Furniture Configurator</h1>
-        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '30px' }}>اختر نموذجا.</p>
+      <div className="w-full md:w-80 lg:w-96 p-4 md:p-6 bg-white z-10 shadow-[2px_0_20px_rgba(0,0,0,0.05)] flex flex-col max-h-[45vh] md:max-h-none overflow-y-auto">
+        <h1 className="text-xl md:text-2xl font-bold mb-2">Furniture Configurator</h1>
+        <p className="text-gray-500 text-sm mb-5 md:mb-7">اختر نموذجا.</p>
 
-        <section style={{ marginBottom: '30px' }}>
-          <label style={{ display: 'block', fontWeight: '600', marginBottom: '10px' }}>Sofa Model</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        <section className="mb-6 md:mb-8">
+          <label className="block font-semibold mb-3 text-sm">Sofa Model</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {MODEL_NAMES.map((m) => (
               <button
                 key={m}
                 onClick={() => setSelectedModel(m)}
                 className="uppercase"
                 style={{
-                  padding: '12px', border: '1px solid', borderRadius: '4px', cursor: 'pointer',
+                  padding: '10px', border: '1px solid', borderRadius: '4px', cursor: 'pointer',
                   borderColor: selectedModel === m ? '#00786f' : '#ddd',
                   background: selectedModel === m ? '#00786f' : 'white',
                   color: selectedModel === m ? 'white' : '#000',
@@ -86,14 +80,14 @@ const Configurator = () => {
         </section>
         <button
           onClick={() => setArMode(true)}
-          style={{ marginTop: 12, padding: '12px', borderRadius: 4, border: '1px solid #00786f', background: '#00786f', color: 'white', fontWeight: 700, cursor: 'pointer' }}
+          className="mt-2 md:mt-3 p-3 rounded border border-[#00786f] bg-[#00786f] text-white font-bold cursor-pointer"
         >
           Try AR Mode
         </button>
       </div>
 
       {/* 3D VIEWPORT */}
-      <div style={{ width: '100%', flex: 1, position: 'relative' }}>
+      <div className="w-full flex-1 relative min-h-[55vh] md:min-h-0">
         <Canvas shadows camera={{ position: [5, 3, 5], fov: 35 }}>
           <Suspense fallback={<Html center><h2>Loading Design...</h2></Html>}>
             {/* Stage provides studio lighting and centers the model automatically */}
@@ -107,7 +101,6 @@ const Configurator = () => {
           <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 1.8} />
         </Canvas>
       </div>
-      <div style={{ width: '10%'}}></div>
     </div>
   );
 };

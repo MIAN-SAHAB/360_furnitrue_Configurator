@@ -14,30 +14,36 @@ import { AppView, UserRole } from '../types';
 
 export const PublicLayout = ({ children, activeView, onNavigate, user, onLogout }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  const handleNavigate = (view) => {
+    onNavigate(view);
+    setShowMobileMenu(false);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fcfaf7]">
       <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2 cursor-pointer w-[150px]" onClick={() => onNavigate(AppView.PUBLIC)}>
+        <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-2 md:gap-4">
+          <div className="flex items-center gap-3 md:gap-8 min-w-0">
+            <div className="flex items-center gap-2 cursor-pointer w-[110px] sm:w-[150px] shrink-0" onClick={() => handleNavigate(AppView.PUBLIC)}>
               <img src="assets/360 logo.png" alt="" />
             </div>
-            <nav className="hidden md:flex gap-8 text-sm font-bold text-gray-600">
-              <button onClick={() => onNavigate(AppView.PUBLIC)} className="cursor-pointer hover:text-teal-600 transition">الرئيسية</button>
-              <button onClick={() => onNavigate(AppView.THEMES_GALLERY)} className="cursor-pointer hover:text-teal-600 transition">الثيمات</button>
-              <button onClick={() => onNavigate(AppView.CONFIGUTATOR)} className="cursor-pointer hover:text-teal-600 transition">مكون</button>
+            <nav className="hidden xl:flex gap-6 text-sm font-bold text-gray-600">
+              <button onClick={() => handleNavigate(AppView.PUBLIC)} className="cursor-pointer hover:text-teal-600 transition">الرئيسية</button>
+              <button onClick={() => handleNavigate(AppView.THEMES_GALLERY)} className="cursor-pointer hover:text-teal-600 transition">الثيمات</button>
+              <button onClick={() => handleNavigate(AppView.CONFIGUTATOR)} className="cursor-pointer hover:text-teal-600 transition">مكون</button>
               <a href="#" className="hover:text-teal-600 transition">المنتجات</a>
               <a href="#" className="hover:text-teal-600 transition">عن المنصة</a>
             </nav>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="relative hidden lg:block">
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+            <div className="relative hidden xl:block">
               <input type="text" placeholder="بحث عن منتج أو متجر..." className="bg-gray-100 border-none rounded-full px-4 py-2 pr-10 text-xs focus:ring-2 focus:ring-teal-500 w-64 transition-all" />
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             </div>
             
-            <button className="p-2 hover:bg-gray-100 rounded-full relative transition">
+            <button className="hidden sm:block p-2 hover:bg-gray-100 rounded-full relative transition">
               <ShoppingBag className="w-5 h-5 text-gray-700" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
             </button>
@@ -88,17 +94,55 @@ export const PublicLayout = ({ children, activeView, onNavigate, user, onLogout 
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <button onClick={() => onNavigate(AppView.AUTH)} className="px-6 py-2 rounded-full text-xs font-bold text-gray-700 hover:bg-gray-100 transition">
+              <div className="hidden sm:flex items-center gap-1.5 sm:gap-2">
+                <button onClick={() => handleNavigate(AppView.AUTH)} className="px-3 sm:px-4 md:px-6 py-2 rounded-full text-xs font-bold text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
                   دخول
                 </button>
-                <button onClick={() => onNavigate(AppView.ONBOARDING)} className="px-6 py-2.5 rounded-full text-xs font-bold transition shadow-lg shadow-gold-900/10 hover:scale-105 active:scale-95" style={{ backgroundColor: COLORS.gold, color: 'white' }}>
+                <button onClick={() => handleNavigate(AppView.ONBOARDING)} className="px-3 sm:px-4 md:px-6 py-2.5 rounded-full text-xs font-bold transition shadow-lg shadow-gold-900/10 hover:scale-105 active:scale-95 whitespace-nowrap" style={{ backgroundColor: COLORS.gold, color: 'white' }}>
                   سجل جهتك
                 </button>
               </div>
             )}
+
+            <button
+              onClick={() => setShowMobileMenu((prev) => !prev)}
+              className="xl:hidden p-2 rounded-xl hover:bg-gray-100 transition"
+              aria-label="Toggle menu"
+            >
+              <Menu className="w-5 h-5 text-gray-700" />
+            </button>
           </div>
         </div>
+
+        {showMobileMenu && (
+          <div className="xl:hidden border-t border-gray-100 bg-white/95 backdrop-blur-md">
+            <div className="container mx-auto px-4 py-4 space-y-4">
+              <div className="relative">
+                <input type="text" placeholder="بحث عن منتج أو متجر..." className="w-full bg-gray-100 border-none rounded-full px-4 py-2.5 pr-10 text-xs focus:ring-2 focus:ring-teal-500" />
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+              </div>
+
+              <nav className="flex flex-col gap-2 text-sm font-bold text-gray-700">
+                <button onClick={() => handleNavigate(AppView.PUBLIC)} className="text-right p-3 rounded-xl hover:bg-gray-50 transition">الرئيسية</button>
+                <button onClick={() => handleNavigate(AppView.THEMES_GALLERY)} className="text-right p-3 rounded-xl hover:bg-gray-50 transition">الثيمات</button>
+                <button onClick={() => handleNavigate(AppView.CONFIGUTATOR)} className="text-right p-3 rounded-xl hover:bg-gray-50 transition">مكون</button>
+                <a href="#" className="text-right p-3 rounded-xl hover:bg-gray-50 transition">المنتجات</a>
+                <a href="#" className="text-right p-3 rounded-xl hover:bg-gray-50 transition">عن المنصة</a>
+              </nav>
+
+              {!user && (
+                <div className="flex gap-2">
+                  <button onClick={() => handleNavigate(AppView.AUTH)} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition">
+                    دخول
+                  </button>
+                  <button onClick={() => handleNavigate(AppView.ONBOARDING)} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition" style={{ backgroundColor: COLORS.gold }}>
+                    سجل جهتك
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="flex-grow">{children}</main>
@@ -219,7 +263,7 @@ export const AdminLayout = ({ children, title, sidebar, onNavigate, user, onLogo
       </aside>
       
       <div className="flex-grow flex flex-col h-screen overflow-hidden">
-        <header className="bg-white/80 backdrop-blur-md border-b px-8 py-5 flex items-center justify-between z-30 shadow-sm">
+        <header className="bg-white/80 backdrop-blur-md border-b px-4 md:px-8 py-4 md:py-5 flex items-center justify-between z-30 shadow-sm gap-3">
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <span className="w-1.5 h-6 bg-teal-500 rounded-full"></span>
             {title}
@@ -235,7 +279,7 @@ export const AdminLayout = ({ children, title, sidebar, onNavigate, user, onLogo
             </div>
           </div>
         </header>
-        <main className="flex-grow overflow-y-auto p-8 custom-scrollbar bg-[#fcfaf7]">
+        <main className="flex-grow overflow-y-auto p-4 md:p-8 custom-scrollbar bg-[#fcfaf7]">
           {children}
         </main>
       </div>

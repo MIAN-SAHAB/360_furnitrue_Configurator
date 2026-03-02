@@ -1,8 +1,41 @@
 import React, { useRef, useState, useMemo, Suspense, useCallback, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, ContactShadows, useGLTF, useTexture, Html } from '@react-three/drei';
+import { Canvas, useThree } from '@react-three/fiber';
+import { OrbitControls, ContactShadows, useGLTF, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import defaultRoom from '/assets/room-picture.jpg'; // Ensure this path is correct for your project
+
+const PART_GROUP_LABELS = {
+  seat: 'Seat',
+  back: 'Back',
+  arms: 'Arms',
+  cushions: 'Cushions',
+  legs: 'Legs',
+  body: 'Body',
+};
+
+function inferPartGroup(partName = '') {
+  const n = partName.toLowerCase();
+  if (n.includes('leg') || n.includes('foot')) return 'legs';
+  if (n.includes('cushion') || n.includes('pillow')) return 'cushions';
+  if (n.includes('arm')) return 'arms';
+  if (n.includes('back')) return 'back';
+  if (n.includes('seat') || n.includes('base')) return 'seat';
+  return 'body';
+}
+
+function getMeshSemanticName(mesh) {
+  const tokens = [];
+  let current = mesh;
+  while (current) {
+    if (current.name) tokens.push(current.name);
+    current = current.parent;
+  }
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  materials.forEach((m) => {
+    if (m?.name) tokens.push(m.name);
+  });
+  return tokens.join(' ').toLowerCase();
+}
 
 // --- 3D Model Component ---
 function Model({ url, color }) {
@@ -23,38 +56,6 @@ function Model({ url, color }) {
   return <primitive object={scene} />;
 }
 
-// --- Visual Rotation Ring Component ---
-function RotationRing({ isHovered, setIsHovered, onPointerDown }) {
-  return (
-    <group position={[0, 0.05, 0]}>
-      {/* Visual Ring */}
-      <mesh 
-        rotation={[-Math.PI / 2, 0, 0]} 
-        onPointerOver={() => setIsHovered(true)} 
-        onPointerOut={() => setIsHovered(false)}
-        onPointerDown={onPointerDown}
-      >
-        <ringGeometry args={[0.8, 1, 32]} />
-        <meshBasicMaterial 
-          color={isHovered ? "#ff0000" : "#ffffff"} 
-          side={THREE.DoubleSide} 
-          transparent 
-          opacity={0.6} 
-        />
-      </mesh>
-      {/* Arrow Indicator (Triangle) */}
-      <mesh 
-        position={[0, 0, 0.9]} 
-        rotation={[-Math.PI / 2, 0, 0]}
-        onPointerDown={onPointerDown}
-      >
-        <circleGeometry args={[0.15, 3]} />
-        <meshBasicMaterial color={isHovered ? "#ff0000" : "#ffffff"} />
-      </mesh>
-    </group>
-  );
-}
-
 const DEFAULT_MODEL_POSITION = [0, 0, 0.5];
 const DEFAULT_MODEL_SCALE = 0.5;
 const DEFAULT_MODEL_ROTATION = [0, 0, 0];
@@ -66,178 +67,209 @@ function ARScene({
   setModelPosition,
   modelScale,
   modelRotation,
-  setModelRotation,
+  lockToFloor,
+  selectedGroup,
+  groupColors,
+  onSelectPart,
+  onPartsDiscovered,
   setInteracting // Notify parent if we are touching model
 }) {
   const groupRef = useRef();
   const { camera, gl } = useThree();
+  const dragPlaneRef = useRef(new THREE.Plane());
+  const dragOffsetRef = useRef(new THREE.Vector3());
+  const dragPointRef = useRef(new THREE.Vector3());
+  const raycasterRef = useRef(new THREE.Raycaster());
+  const pointerRef = useRef(new THREE.Vector2());
+  const [isFreeDragging, setIsFreeDragging] = useState(false);
+  const { scene } = useGLTF(`/models/sofas/${selectedModel}.glb`);
+  const clonedScene = useMemo(() => {
+    const cloned = scene.clone(true);
+    let fallbackIndex = 1;
+    const meshMeta = [];
+
+    cloned.traverse((child) => {
+      if (!child.isMesh) return;
+      child.castShadow = true;
+      child.receiveShadow = true;
+      child.material = child.material?.clone?.() ?? child.material;
+      const rawName = child.name?.trim();
+      const selectKey = rawName || `mesh_${fallbackIndex}`;
+      const displayName = rawName || `Part ${fallbackIndex}`;
+      child.userData.selectKey = selectKey;
+      child.userData.displayName = displayName;
+      child.userData.baseColor = child.material?.color?.clone?.();
+      child.userData.partGroup = inferPartGroup(getMeshSemanticName(child));
+      child.geometry?.computeBoundingBox?.();
+      if (child.geometry?.boundingBox) {
+        const bb = child.geometry.boundingBox.clone();
+        bb.applyMatrix4(child.matrixWorld);
+        const center = bb.getCenter(new THREE.Vector3());
+        const size = bb.getSize(new THREE.Vector3());
+        meshMeta.push({ mesh: child, center, size });
+      }
+      fallbackIndex += 1;
+    });
+
+    // Geometric fallback when names/materials don't carry semantics.
+    const unknown = meshMeta.filter((m) => m.mesh.userData.partGroup === 'body');
+    if (unknown.length > 0) {
+      const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+      const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+      meshMeta.forEach((m) => {
+        min.min(m.center);
+        max.max(m.center);
+      });
+      const span = max.clone().sub(min);
+      const mid = min.clone().add(max).multiplyScalar(0.5);
+      const spanX = Math.max(span.x, 1e-6);
+      const spanY = Math.max(span.y, 1e-6);
+      const spanZ = Math.max(span.z, 1e-6);
+
+      unknown.forEach(({ mesh, center, size }) => {
+        const footprint = Math.max(size.x, size.z);
+        if (center.y < min.y + 0.22 * spanY && footprint < 0.18) {
+          mesh.userData.partGroup = 'legs';
+        } else if (Math.abs(center.x - mid.x) > 0.35 * spanX && center.y > min.y + 0.22 * spanY) {
+          mesh.userData.partGroup = 'arms';
+        } else if (Math.abs(center.z - mid.z) > 0.32 * spanZ && center.y > min.y + 0.35 * spanY) {
+          mesh.userData.partGroup = 'back';
+        } else if (center.y > min.y + 0.5 * spanY) {
+          mesh.userData.partGroup = 'cushions';
+        } else {
+          mesh.userData.partGroup = 'seat';
+        }
+      });
+    }
+    return cloned;
+  }, [scene]);
+
+  const availableParts = useMemo(() => {
+    const parts = [];
+    const seen = new Set();
+    clonedScene.traverse((child) => {
+      if (!child.isMesh) return;
+      const key = child.userData.selectKey;
+      const label = child.userData.displayName;
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      parts.push({ key, label });
+    });
+    return parts.sort((a, b) => a.label.localeCompare(b.label));
+  }, [clonedScene]);
+
+  useEffect(() => {
+    onPartsDiscovered(availableParts);
+  }, [availableParts, onPartsDiscovered]);
+
+  useEffect(() => {
+    clonedScene.traverse((child) => {
+      if (!child.isMesh || !child.material) return;
+      const key = child.userData.selectKey;
+      const mat = child.material;
+      const partGroup = child.userData.partGroup || inferPartGroup(key || child.name || '');
+      const explicitGroupColor = groupColors[partGroup];
+      const isFabric = child.name?.toLowerCase?.().includes('fabric');
+
+      if (explicitGroupColor) {
+        mat.color?.set?.(explicitGroupColor);
+      } else if (isFabric && child.userData.baseColor) {
+        mat.color?.copy?.(child.userData.baseColor);
+      } else if (child.userData.baseColor) {
+        mat.color?.copy?.(child.userData.baseColor);
+      }
+
+      if ('emissive' in mat) {
+        if (partGroup === selectedGroup) {
+          mat.emissive.set('#14b8a6');
+          mat.emissiveIntensity = 0.35;
+        } else {
+          mat.emissive.set('#000000');
+          mat.emissiveIntensity = 0;
+        }
+      }
+    });
+  }, [clonedScene, groupColors, selectedGroup]);
   
-  // Interaction States
-  const [isDragging, setIsDragging] = useState(false);
-  const [isRotating, setIsRotating] = useState(false);
-  const [isRotatingVertical, setIsRotatingVertical] = useState(false);
-  const [hoverRing, setHoverRing] = useState(false);
-  const [hoverVerticalRing, setHoverVerticalRing] = useState(false);
+  const handlePartPointerDown = useCallback(
+    (e) => {
+      e.stopPropagation();
+      if (!e.object?.isMesh) return;
+      const key = e.object.userData.selectKey;
+      const label = e.object.userData.displayName;
+      const group = e.object.userData.partGroup || inferPartGroup(key || label || e.object.name || '');
+      if (key) {
+        onSelectPart({ key, label, group });
+      }
+      if (!groupRef.current) return;
+      // Start direct drag on object so users can move it freely by click+drag.
+      const cameraNormal = new THREE.Vector3();
+      camera.getWorldDirection(cameraNormal);
+      dragPlaneRef.current.setFromNormalAndCoplanarPoint(cameraNormal, groupRef.current.position.clone());
 
-  // Store initial values for drag calculations
-  const dragStartRef = useRef({ 
-    x: 0, 
-    z: 0, 
-    mouseX: 0, 
-    mouseY: 0, 
-    initialRotationY: 0 
-  });
-
-  // Notify parent component to disable OrbitControls
-  useEffect(() => {
-    setInteracting(isDragging || isRotating || isRotatingVertical);
-  }, [isDragging, isRotating, isRotatingVertical, setInteracting]);
-
-  // Apply Scale
-  useEffect(() => {
-    if (groupRef.current) {
-      groupRef.current.scale.set(modelScale, modelScale, modelScale);
-    }
-  }, [modelScale]);
-
-  // --- HANDLERS ---
-
-  // 1. Handle clicking the MODEL (Start Move)
-  const onModelPointerDown = useCallback((e) => {
-    // If we clicked the ring, ignore this handler (handled bystopPropagation in ring)
-    if (isRotating) return; 
-    
-    e.stopPropagation(); // Stop click from hitting background
-    
-    setIsDragging(true);
-    // Project the 3D position to screen space is complex, simpler to use delta
-    dragStartRef.current = {
-      x: groupRef.current.position.x,
-      z: groupRef.current.position.z,
-      mouseX: e.clientX,
-      mouseY: e.clientY
-    };
-    gl.domElement.style.cursor = 'grabbing';
-  }, [isRotating, gl]);
-
-  // 2. Handle clicking the RING (Start Rotate Horizontal)
-  const onRingPointerDown = useCallback((e) => {
-    e.stopPropagation(); // CRITICAL: Stop event from bubbling to Model or Background
-    
-    setIsRotating(true);
-    dragStartRef.current = {
-      mouseX: e.clientX,
-      initialRotationY: groupRef.current.rotation.y
-    };
-    gl.domElement.style.cursor = 'ew-resize';
-  }, [gl]);
-
-  // 2b. Handle clicking the VERTICAL RING (Start Rotate Vertical)
-  const onVerticalRingPointerDown = useCallback((e) => {
-    e.stopPropagation(); // CRITICAL: Stop event from bubbling to Model or Background
-    
-    setIsRotatingVertical(true);
-    dragStartRef.current = {
-      mouseY: e.clientY,
-      initialRotationX: groupRef.current.rotation.x
-    };
-    gl.domElement.style.cursor = 'ns-resize';
-  }, [gl]);
-
-  // 3. Global Move Listener (attached to window to prevent mouse slipping off object)
-  useEffect(() => {
-    const onPointerMove = (e) => {
-      if (!isDragging && !isRotating && !isRotatingVertical) return;
-
-      if (isDragging) {
-        // --- MOVEMENT LOGIC ---
-        // Slower factor for more precision
-        const sensitivity = 0.005; 
-        const deltaX = (e.clientX - dragStartRef.current.mouseX) * sensitivity;
-        const deltaZ = (e.clientY - dragStartRef.current.mouseY) * sensitivity;
-
-        setModelPosition([
-          dragStartRef.current.x + deltaX,
-          DEFAULT_MODEL_POSITION[1],
-          dragStartRef.current.z + deltaZ
-        ]);
-      } 
-      
-      if (isRotating) {
-        // --- HORIZONTAL ROTATION LOGIC ---
-        const sensitivity = 0.01;
-        const deltaX = (e.clientX - dragStartRef.current.mouseX) * sensitivity;
-        
-        setModelRotation([
-          modelRotation[0], // Keep X rotation
-          dragStartRef.current.initialRotationY + deltaX,
-          0  // Lock Z rotation
-        ]);
+      if (e.ray.intersectPlane(dragPlaneRef.current, dragPointRef.current)) {
+        dragOffsetRef.current.copy(dragPointRef.current).sub(groupRef.current.position);
+      } else {
+        dragOffsetRef.current.set(0, 0, 0);
       }
 
-      if (isRotatingVertical) {
-        // --- VERTICAL ROTATION LOGIC ---
-        const sensitivity = 0.01;
-        const deltaY = (e.clientY - dragStartRef.current.mouseY) * sensitivity;
-        
-        setModelRotation([
-          dragStartRef.current.initialRotationX + deltaY,
-          modelRotation[1], // Keep Y rotation
-          0  // Lock Z rotation
-        ]);
-      }
+      setIsFreeDragging(true);
+      setInteracting(true);
+    },
+    [camera, onSelectPart, setInteracting]
+  );
+
+  useEffect(() => {
+    if (!isFreeDragging) return;
+
+    const handlePointerMove = (event) => {
+      if (!groupRef.current) return;
+      const rect = gl.domElement.getBoundingClientRect();
+      pointerRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycasterRef.current.setFromCamera(pointerRef.current, camera);
+
+      if (!raycasterRef.current.ray.intersectPlane(dragPlaneRef.current, dragPointRef.current)) return;
+      const next = dragPointRef.current.clone().sub(dragOffsetRef.current);
+      const nextY = lockToFloor ? DEFAULT_MODEL_POSITION[1] : next.y;
+      setModelPosition([next.x, nextY, next.z]);
     };
 
-    const onPointerUp = () => {
-      setIsDragging(false);
-      setIsRotating(false);
-      setIsRotatingVertical(false);
-      gl.domElement.style.cursor = 'auto';
+    const handlePointerUp = () => {
+      setIsFreeDragging(false);
+      setInteracting(false);
     };
 
-    // Attach listeners to window for smooth dragging even if mouse leaves canvas
-    if (isDragging || isRotating || isRotatingVertical) {
-      window.addEventListener('pointermove', onPointerMove);
-      window.addEventListener('pointerup', onPointerUp);
-    }
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
 
     return () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDragging, isRotating, isRotatingVertical, setModelPosition, setModelRotation, modelRotation, gl]);
+  }, [camera, gl, isFreeDragging, lockToFloor, setInteracting, setModelPosition]);
 
   return (
     <>
-      <ambientLight intensity={0.6} />
-      {/* <directionalLight position={[5, 10, 5]} intensity={1} castShadow /> */}
-      
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[6, 10, 4]} intensity={0.8} />
+
       <group
         ref={groupRef}
         position={modelPosition}
         rotation={modelRotation}
-        onPointerDown={onModelPointerDown} // Clicking model triggers Drag
+        scale={[modelScale, modelScale, modelScale]}
       >
-        <Model url={`/models/sofas/${selectedModel}.glb`} />
-        
-        {/* The Horizontal Rotation Ring */}
-        <RotationRing 
-            isHovered={hoverRing} 
-            setIsHovered={setHoverRing} 
-            onPointerDown={onRingPointerDown} 
-        />
-        
-        {/* The Vertical Rotation Ring (Right Side) */}
-        <group position={[0.9, 0.5, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <RotationRing 
-              isHovered={hoverVerticalRing} 
-              setIsHovered={setHoverVerticalRing} 
-              onPointerDown={onVerticalRingPointerDown} 
-          />
-        </group>
+        <primitive object={clonedScene} onPointerDown={handlePartPointerDown} />
       </group>
 
-      <ContactShadows position={[0, -0.01, 0.5]} opacity={0.4} scale={3.5} blur={2} far={0} />
+      <ContactShadows
+        position={[modelPosition[0], -0.01, modelPosition[2]]}
+        opacity={0.35}
+        scale={4}
+        blur={2.5}
+        far={4}
+      />
     </>
   );
 }
@@ -246,6 +278,7 @@ function ARScene({
 const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
   const [bgImage, setBgImage] = useState(defaultRoom);
   const [selectedModel, setSelectedModel] = useState(defaultModel || modelNames[0]);
+  const [showControls, setShowControls] = useState(true);
   
   // Model State
   const [modelPosition, setModelPosition] = useState(DEFAULT_MODEL_POSITION);
@@ -254,6 +287,20 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
   
   // Interaction State (lifts up from Scene to disable OrbitControls)
   const [isInteracting, setInteracting] = useState(false);
+  const [lockToFloor, setLockToFloor] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [parts, setParts] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [groupColors, setGroupColors] = useState({});
+  const [groupColorInput, setGroupColorInput] = useState('#cc943c');
+
+  useEffect(() => {
+    setSelectedGroup(null);
+    setParts([]);
+    setGroups([]);
+    setGroupColors({});
+    setGroupColorInput('#cc943c');
+  }, [selectedModel]);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -272,20 +319,79 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
     setModelRotation(DEFAULT_MODEL_ROTATION);
   };
 
+  const handleHeightChange = (value) => {
+    setModelPosition((prev) => [prev[0], value, prev[2]]);
+  };
+
+  const nudgeHeight = (delta) => {
+    setModelPosition((prev) => {
+      const next = Math.max(-1.5, Math.min(2.5, prev[1] + delta));
+      return [prev[0], next, prev[2]];
+    });
+  };
+
+  const nudgePosition = (dx, dy, dz) => {
+    setModelPosition((prev) => {
+      const nextY = Math.max(-1.5, Math.min(2.5, prev[1] + dy));
+      return [prev[0] + dx, nextY, prev[2] + dz];
+    });
+  };
+
+  const nudgeRotation = (delta) => {
+    setModelRotation((prev) => [prev[0], prev[1] + delta, prev[2]]);
+  };
+
+  const handleRotationYChange = (value) => {
+    setModelRotation((prev) => [prev[0], value, prev[2]]);
+  };
+
+  const handleSelectPart = (part) => {
+    const group = part?.group || inferPartGroup(part?.key || part?.label || '');
+    setSelectedGroup(group);
+    setGroupColorInput(groupColors[group] || '#cc943c');
+  };
+
+  const applySelectedGroupColor = () => {
+    if (!selectedGroup) return;
+    setGroupColors((prev) => ({
+      ...prev,
+      [selectedGroup]: groupColorInput,
+    }));
+  };
+
+  const clearSelectedGroupColor = () => {
+    if (!selectedGroup) return;
+    setGroupColors((prev) => {
+      const next = { ...prev };
+      delete next[selectedGroup];
+      return next;
+    });
+  };
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div className="w-full h-full relative">
       
-      {/* --- UI Controls (Same as before) --- */}
-      <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 49, background: 'rgba(255,255,255,0.95)', padding: 16, borderRadius: 8, boxShadow: '0 2px 12px #0001', minWidth: 260 }}>
-        <h2 style={{ margin: 0, fontWeight: 700, color: 'black' }}>AR Viewer</h2>
+      <div className="absolute top-3 left-3 z-50 md:hidden">
+        <button
+          onClick={() => setShowControls((prev) => !prev)}
+          className="px-3 py-2 rounded-lg bg-white/95 text-gray-800 text-xs font-bold shadow border border-gray-200"
+        >
+          {showControls ? 'Hide Controls' : 'Show Controls'}
+        </button>
+      </div>
+
+      {/* --- UI Controls --- */}
+      {showControls && (
+      <div className="absolute z-40 bg-white/95 p-3 md:p-4 rounded-xl shadow-[0_2px_12px_#0001] w-[calc(100%-1rem)] sm:w-[340px] max-h-[42vh] md:max-h-[calc(100%-2rem)] overflow-y-auto left-2 right-2 md:left-5 md:right-auto md:top-5 bottom-2 md:bottom-auto">
+        <h2 className="m-0 font-bold text-black text-base md:text-lg">AR Viewer</h2>
         
-        <div style={{ margin: '12px 0' }}>
-          <label style={{ fontWeight: 600, color: 'black' }}>Model</label>
+        <div style={{ margin: '10px 0' }}>
+          <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Model</label>
           <select 
             value={selectedModel} 
             onChange={e => setSelectedModel(e.target.value)} 
             className='text-black'
-            style={{ width: '100%', padding: 6, borderRadius: 4, marginTop: 4, border: '1px solid #ccc' }}
+            style={{ width: '100%', padding: 8, borderRadius: 6, marginTop: 4, border: '1px solid #ccc' }}
           >
             {modelNames.map((m) => (
               <option key={m} value={m}>{m.replace('-', ' ')}</option>
@@ -293,40 +399,205 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
           </select>
         </div>
 
-        <div style={{ margin: '12px 0' }}>
-          <label style={{ fontWeight: 600, color: 'black' }}>Background</label>
-          <input type="file" accept="image/*" className='text-white p-4 bg-black rounded' onChange={handleImageUpload} style={{marginTop: 4, width: '100%'}} />
+        <div style={{ margin: '10px 0' }}>
+          <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Background</label>
+          <input type="file" accept="image/*" className='text-white p-2.5 bg-black rounded' onChange={handleImageUpload} style={{marginTop: 4, width: '100%'}} />
         </div>
 
-        <div style={{ margin: '12px 0' }}>
-           <label style={{ fontWeight: 600, color: 'black' }}>Scale: {modelScale.toFixed(2)}</label>
+        <div style={{ margin: '10px 0' }}>
+           <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Scale: {modelScale.toFixed(2)}</label>
            <input type="range" min={0.2} max={1.2} step={0.01} value={modelScale} onChange={e => setModelScale(Number(e.target.value))} style={{ width: '100%' }} />
+        </div>
+
+        <div style={{ margin: '10px 0' }}>
+          <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>
+            Rotation Y: {modelRotation[1].toFixed(2)}
+          </label>
+          <input
+            type="range"
+            min={-3.14}
+            max={3.14}
+            step={0.01}
+            value={modelRotation[1]}
+            onChange={(e) => handleRotationYChange(Number(e.target.value))}
+            style={{ width: '100%' }}
+          />
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button
+              onClick={() => nudgeRotation(-0.1)}
+              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Rotate Left
+            </button>
+            <button
+              onClick={() => nudgeRotation(0.1)}
+              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Rotate Right
+            </button>
+          </div>
+        </div>
+
+        <div style={{ margin: '10px 0' }}>
+          <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>
+            Height (Y): {modelPosition[1].toFixed(2)}
+          </label>
+          <input
+            type="range"
+            min={-1.5}
+            max={2.5}
+            step={0.01}
+            value={modelPosition[1]}
+            onChange={(e) => handleHeightChange(Number(e.target.value))}
+            style={{ width: '100%' }}
+          />
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button
+              onClick={() => nudgeHeight(0.05)}
+              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Raise +Y
+            </button>
+            <button
+              onClick={() => nudgeHeight(-0.05)}
+              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Lower -Y
+            </button>
+          </div>
+          <label className="flex items-center gap-2 mt-2 text-xs font-semibold text-gray-700">
+            <input
+              type="checkbox"
+              checked={lockToFloor}
+              onChange={(e) => setLockToFloor(e.target.checked)}
+            />
+            Lock to floor (Y=0)
+          </label>
+        </div>
+
+        <div style={{ margin: '10px 0' }}>
+          <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Move Object (360)</label>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            <div></div>
+            <button
+              onClick={() => nudgePosition(0, 0, -0.08)}
+              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Forward
+            </button>
+            <div></div>
+            <button
+              onClick={() => nudgePosition(-0.08, 0, 0)}
+              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Left
+            </button>
+            <button
+              onClick={() => nudgePosition(0, 0.08, 0)}
+              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Up
+            </button>
+            <button
+              onClick={() => nudgePosition(0.08, 0, 0)}
+              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Right
+            </button>
+            <div></div>
+            <button
+              onClick={() => nudgePosition(0, 0, 0.08)}
+              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Back
+            </button>
+            <div></div>
+            <button
+              onClick={() => nudgePosition(0, -0.08, 0)}
+              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Down
+            </button>
+            <div></div>
+          </div>
+        </div>
+
+        <div style={{ margin: '10px 0' }}>
+          <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Selectable Groups</label>
+          <select
+            value={selectedGroup || ''}
+            onChange={(e) => {
+              const g = e.target.value;
+              if (!g) {
+                setSelectedGroup(null);
+                return;
+              }
+              setSelectedGroup(g);
+              setGroupColorInput(groupColors[g] || '#cc943c');
+            }}
+            className='text-black'
+            style={{ width: '100%', padding: 8, borderRadius: 6, marginTop: 4, border: '1px solid #ccc' }}
+          >
+            <option value="">Select group (legs, cushion, ...)</option>
+            {groups.map((groupKey) => (
+              <option key={groupKey} value={groupKey}>
+                {PART_GROUP_LABELS[groupKey] || groupKey}
+              </option>
+            ))}
+          </select>
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="color"
+              value={groupColorInput}
+              onChange={(e) => setGroupColorInput(e.target.value)}
+              className="h-9 w-12 p-0 border border-gray-300 rounded"
+              disabled={!selectedGroup}
+            />
+            <button
+              onClick={applySelectedGroupColor}
+              disabled={!selectedGroup}
+              className="flex-1 rounded p-2 text-xs font-bold border border-teal-600 bg-teal-600 text-white disabled:opacity-50"
+            >
+              Apply Color to Group
+            </button>
+          </div>
+          <button
+            onClick={clearSelectedGroupColor}
+            disabled={!selectedGroup}
+            className="w-full mt-2 rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 disabled:opacity-50"
+          >
+            Reset Group Color
+          </button>
+          <div style={{ marginTop: 6, fontSize: '11px', color: '#666' }}>
+            Click any mesh and it auto-selects a group (legs/arms/back/seat/cushions).
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button onClick={handleReset} 
-          className='bg-[#cc943c] text-white hover:bg-white hover:text-[#cc943c] border border-[#cc943c] transition-all duration-300 rounded p-4'
+          className='bg-[#cc943c] text-white hover:bg-white hover:text-[#cc943c] border border-[#cc943c] transition-all duration-300 rounded p-2.5 text-sm'
           style={{ flex: 1, cursor: 'pointer' }}>
             Reset
           </button>
           {onBack && 
-          <button onClick={onBack} className='hover:bg-[#eee] hover:text-[#333] bg-[#333] text-[#eee] border border-[#ccc] transition-all duration-300 rounded p-4' style={{ flex: 1, cursor: 'pointer' }}>Back</button>}
+          <button onClick={onBack} className='hover:bg-[#eee] hover:text-[#333] bg-[#333] text-[#eee] border border-[#ccc] transition-all duration-300 rounded p-2.5 text-sm' style={{ flex: 1, cursor: 'pointer' }}>Back</button>}
         </div>
         
-        <div style={{marginTop:10, fontSize: '12px', color: '#666'}}>
-          * Drag object to move<br/>
-          * Drag bottom ring to rotate horizontally<br/>
-          * Drag right ring to rotate vertically
+        <div style={{marginTop:10, fontSize: '11px', color: '#666', lineHeight: 1.45}}>
+          * Click and drag the object directly to move<br/>
+          * Use Forward/Back/Left/Right/Up/Down for precise placement<br/>
+          * Rotate the camera to view movement in full 360
         </div>
       </div>
+      )}
 
       {/* --- 3D Canvas --- */}
       <Canvas 
         shadows 
         camera={{ position: [0, 2, 6], fov: 35 }} 
         style={{ 
-          width: '100vw', 
-          height: '100vh', 
+          width: '100%', 
+          height: '100%', 
           backgroundImage: `url(${bgImage})`, 
           backgroundSize: 'cover', 
           backgroundPosition: 'center' 
@@ -338,17 +609,30 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
             modelPosition={modelPosition}
             setModelPosition={setModelPosition}
             modelScale={modelScale}
-            setModelScale={setModelScale}
             modelRotation={modelRotation}
-            setModelRotation={setModelRotation}
+            lockToFloor={lockToFloor}
+            selectedGroup={selectedGroup}
+            groupColors={groupColors}
+            onSelectPart={handleSelectPart}
+            onPartsDiscovered={(discoveredParts) => {
+              setParts(discoveredParts);
+              const discoveredGroups = Array.from(
+                new Set(discoveredParts.map((p) => inferPartGroup(p.key || p.label || '')))
+              );
+              const order = ['seat', 'back', 'arms', 'cushions', 'legs', 'body'];
+              discoveredGroups.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+              setGroups(discoveredGroups);
+            }}
             setInteracting={setInteracting}
           />
         </Suspense>
         
-        {/* OrbitControls are disabled when user is dragging object or ring */}
+        {/* OrbitControls are disabled when user is dragging transform gizmos */}
         <OrbitControls 
             makeDefault 
-            enableZoom={false} 
+            enableZoom
+            enablePan
+            enableRotate
             minPolarAngle={0} 
             maxPolarAngle={Math.PI / 1.8} 
             enabled={!isInteracting} 

@@ -3,21 +3,22 @@ import React from 'react';
 export default function Navigation({ onNavigateHome }) {
   return (
     <nav style={{
-      position: 'absolute',
+      position: 'sticky',
       top: 0,
       left: 0,
       right: 0,
-      height: '70px',
+      minHeight: '64px',
       background: 'rgba(255, 255, 255, 0.95)',
       boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
       display: 'flex',
       alignItems: 'center',
-      paddingLeft: '30px',
-      paddingRight: '30px',
+      paddingLeft: '16px',
+      paddingRight: '16px',
       zIndex: 100,
       fontFamily: 'sans-serif',
+      flexWrap: 'wrap',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minHeight: '64px' }}>
         <button
           onClick={onNavigateHome}
           style={{

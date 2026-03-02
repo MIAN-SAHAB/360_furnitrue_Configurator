@@ -77,17 +77,17 @@ export const Home = ({ onNavigate }) => {
   return (
     <div className="animate-in fade-in duration-1000 bg-[#fcfaf7]">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden pt-12 pb-24">
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-[#f4f1ea] -z-10 rounded-bl-[15rem] shadow-sm"></div>
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-teal-500/5 rounded-full blur-[100px] -z-10"></div>
+      <section className="relative min-h-[80vh] md:min-h-[90vh] flex items-center overflow-hidden pt-8 md:pt-12 pb-14 md:pb-24">
+        <div className="absolute top-0 right-0 w-[70%] md:w-1/2 h-full bg-[#f4f1ea] -z-10 rounded-bl-[8rem] md:rounded-bl-[15rem] shadow-sm"></div>
+        <div className="absolute -bottom-24 -left-24 w-64 h-64 md:w-96 md:h-96 bg-teal-500/5 rounded-full blur-[100px] -z-10"></div>
         
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 lg:gap-16 items-center">
             <div className="lg:col-span-6 relative z-10 order-2 lg:order-1">
-              <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/90 backdrop-blur border border-teal-100 text-[#309ca8] text-xs font-bold mb-10 shadow-md">
+              <div className="inline-flex items-center gap-2 px-4 md:px-5 py-2 rounded-full bg-white/90 backdrop-blur border border-teal-100 text-[#309ca8] text-xs font-bold mb-6 md:mb-10 shadow-md">
                  <Sparkles className="w-4 h-4" /> المنصة المتكاملة للأثاث الذكي
               </div>
-              <h1 className="text-[44px] md:text-[72px] font-bold text-[#1a1c1e] mb-8 leading-[1.05] tracking-tight">
+              <h1 className="text-[32px] sm:text-[44px] md:text-[72px] font-bold text-[#1a1c1e] mb-6 md:mb-8 leading-[1.05] tracking-tight">
                 حوّل معرضك إلى <br/>
                 <span className="text-[#309ca8] relative inline-block">
                     تجربة غامرة
@@ -95,21 +95,21 @@ export const Home = ({ onNavigate }) => {
                 </span> <br/>
                 بتقنيات 3D و AR
               </h1>
-              <p className="text-lg md:text-xl text-gray-500 mb-12 max-w-xl leading-relaxed font-medium">
+              <p className="text-base md:text-xl text-gray-500 mb-8 md:mb-12 max-w-xl leading-relaxed font-medium">
                 ارفع مستوى مبيعاتك مع أول منصة متخصصة في تجارة الأثاث تدعم العرض ثلاثي الأبعاد والواقع المعزز بشكل كامل وسلس.
               </p>
-              <div className="flex flex-col sm:flex-row gap-6">
-                <button onClick={() => onNavigate(AppView.ONBOARDING)} className="px-12 py-5 bg-[#1a1c1e] text-white rounded-[2rem] font-bold text-lg hover:bg-black transition-all shadow-2xl hover:shadow-gray-900/40 flex items-center justify-center gap-3 group">
+              <div className="flex flex-col sm:flex-row gap-4 md:gap-6">
+                <button onClick={() => onNavigate(AppView.ONBOARDING)} className="px-6 md:px-12 py-4 md:py-5 bg-[#1a1c1e] text-white rounded-[2rem] font-bold text-base md:text-lg hover:bg-black transition-all shadow-2xl hover:shadow-gray-900/40 flex items-center justify-center gap-3 group">
                   <ArrowLeft className="w-5 h-5 group-hover:-translate-x-2 transition-transform" />
                   ابدأ بناء متجرك الآن
                 </button>
-                <button onClick={() => onNavigate(AppView.THEMES_GALLERY)} className="px-12 py-5 bg-white border border-gray-200 text-[#1a1c1e] rounded-[2rem] font-bold text-lg hover:bg-gray-50 transition-all shadow-sm flex items-center justify-center gap-3 group">
+                <button onClick={() => onNavigate(AppView.THEMES_GALLERY)} className="px-6 md:px-12 py-4 md:py-5 bg-white border border-gray-200 text-[#1a1c1e] rounded-[2rem] font-bold text-base md:text-lg hover:bg-gray-50 transition-all shadow-sm flex items-center justify-center gap-3 group">
                   <Layout className="w-5 h-5 text-gray-400 group-hover:text-teal-600" />
                   استعراض الثيمات
                 </button>
               </div>
               
-              <div className="mt-16 flex items-center gap-6 border-t border-gray-100 pt-10">
+              <div className="mt-10 md:mt-16 flex items-center gap-4 md:gap-6 border-t border-gray-100 pt-6 md:pt-10">
                 <div className="flex -space-x-4">
                   {[1,2,3,4].map(i => (
                     <div key={i} className="w-12 h-12 rounded-full border-4 border-white overflow-hidden shadow-sm">
@@ -125,14 +125,14 @@ export const Home = ({ onNavigate }) => {
               </div>
             </div>
 
-            <div className="lg:col-span-6 relative order-1 lg:order-2 h-[550px] lg:h-[700px]">
-              <div className="absolute top-10 left-10 w-[85%] h-[80%] rounded-[5rem] overflow-hidden shadow-2xl z-10 border-[12px] border-white ring-1 ring-gray-100">
+            <div className="lg:col-span-6 relative order-1 lg:order-2 h-[380px] sm:h-[450px] lg:h-[700px]">
+              <div className="absolute top-6 sm:top-10 left-4 sm:left-10 w-[90%] sm:w-[85%] h-[80%] rounded-[2.5rem] sm:rounded-[5rem] overflow-hidden shadow-2xl z-10 border-[8px] sm:border-[12px] border-white ring-1 ring-gray-100">
                 <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80&w=1200" className="w-full h-full object-cover" alt="Luxury Sofa" />
               </div>
-              <div className="absolute -bottom-5 -right-5 w-[65%] h-[45%] rounded-[4rem] border-[16px] border-white overflow-hidden shadow-2xl z-20 ring-1 ring-gray-100">
+              <div className="absolute -bottom-2 sm:-bottom-5 right-0 sm:-right-5 w-[65%] h-[45%] rounded-[2.5rem] sm:rounded-[4rem] border-[8px] sm:border-[16px] border-white overflow-hidden shadow-2xl z-20 ring-1 ring-gray-100">
                 <img src="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=1000" className="w-full h-full object-cover" alt="Modern Interior" />
               </div>
-              <div className="absolute top-1/2 -right-10 bg-white/90 backdrop-blur p-6 rounded-[2.5rem] shadow-2xl z-30 border border-gray-100 animate-bounce-slow">
+              <div className="absolute top-1/2 right-0 sm:-right-8 bg-white/90 backdrop-blur p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl z-30 border border-gray-100 animate-bounce-slow">
                  <div className="w-12 h-12 bg-teal-500 rounded-2xl flex items-center justify-center text-white mb-3 shadow-lg shadow-teal-500/20">
                     <CubeIcon className="w-7 h-7" />
                  </div>
@@ -145,20 +145,20 @@ export const Home = ({ onNavigate }) => {
       </section>
 
       {/* Services Grid Section */}
-      <section className="py-32 bg-white relative overflow-hidden">
+      <section className="py-16 md:py-32 bg-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-blue-500/5 rounded-full blur-[120px] -z-10"></div>
         <div className="container mx-auto px-4">
-          <div className="text-center mb-24 animate-in slide-in-from-bottom duration-700">
+          <div className="text-center mb-12 md:mb-24 animate-in slide-in-from-bottom duration-700">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-50 text-teal-600 text-[10px] font-bold uppercase tracking-widest mb-6 border border-teal-100 shadow-sm">
               <Zap className="w-3.5 h-3.5" /> مميزات المنصة الذكية
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 tracking-tight">كل ما تحتاجه للنجاح في عالم الأثاث الرقمي</h2>
-            <p className="text-gray-500 max-w-2xl mx-auto text-lg leading-relaxed">نوفر لك أحدث التقنيات البصرية وأدوات الإدارة المتطورة لتبني متجرك بأسلوب عالمي ينافس أكبر الماركات.</p>
+            <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 tracking-tight">كل ما تحتاجه للنجاح في عالم الأثاث الرقمي</h2>
+            <p className="text-gray-500 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">نوفر لك أحدث التقنيات البصرية وأدوات الإدارة المتطورة لتبني متجرك بأسلوب عالمي ينافس أكبر الماركات.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {mainFeatures.map((feature, idx) => (
-              <div key={idx} className="group p-10 bg-[#fcfaf7] rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:bg-white hover:-translate-y-3 transition-all duration-500">
+              <div key={idx} className="group p-6 md:p-10 bg-[#fcfaf7] rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:bg-white hover:-translate-y-3 transition-all duration-500">
                 <div className={`w-20 h-20 rounded-[1.8rem] flex items-center justify-center mb-8 border-2 shadow-sm transition-transform duration-500 group-hover:rotate-6 ${feature.color}`}>
                   <feature.icon className="w-10 h-10" />
                 </div>
@@ -172,7 +172,7 @@ export const Home = ({ onNavigate }) => {
           </div>
 
           {/* Optimized Visual Gallery Row (Furniture focused) */}
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
+          <div className="mt-12 md:mt-16 grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8 animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
             {visualGallery.map((item, idx) => (
               <div key={idx} className="relative aspect-[16/10] rounded-[2rem] overflow-hidden group shadow-lg border border-gray-100/50">
                 <img 
@@ -193,15 +193,15 @@ export const Home = ({ onNavigate }) => {
       </section>
 
       {/* Modern Stats / Social Proof */}
-      <section className="py-32 bg-[#121212] text-white">
+      <section className="py-16 md:py-32 bg-[#121212] text-white">
         <div className="container mx-auto px-4">
-           <div className="grid grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 text-center items-center">
+           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 lg:gap-8 text-center items-center">
               {stats.map((stat, i) => (
                 <div key={i} className="flex flex-col items-center group">
                    <div className="w-16 h-16 bg-[#1e1e1e] rounded-[1.2rem] flex items-center justify-center mb-6 text-[#309ca8] shadow-lg transition-transform group-hover:scale-110">
                       <stat.icon className="w-7 h-7" />
                    </div>
-                   <h4 className="text-5xl md:text-6xl font-black mb-3 tracking-tight">
+                   <h4 className="text-3xl md:text-6xl font-black mb-3 tracking-tight">
                      {stat.value}
                    </h4>
                    <p className="text-gray-400 text-sm md:text-base font-medium">
