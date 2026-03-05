@@ -382,7 +382,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
 
       {/* --- UI Controls --- */}
       {showControls && (
-      <div className="absolute z-40 bg-white/95 p-3 md:p-4 rounded-xl shadow-[0_2px_12px_#0001] w-[calc(100%-1rem)] sm:w-[340px] max-h-[42vh] md:max-h-[calc(100%-2rem)] overflow-y-auto left-2 right-2 md:left-5 md:right-auto md:top-5 bottom-2 md:bottom-auto">
+      <div className="absolute z-40 bg-white/95 p-3 md:p-4 rounded-xl shadow-[0_2px_12px_#0001] w-[calc(100%-1rem)] sm:w-85 max-h-[42vh] md:max-h-[calc(100%-2rem)] overflow-y-auto left-2 right-2 md:left-5 md:right-auto md:top-5 bottom-2 md:bottom-auto">
         <h2 className="m-0 font-bold text-black text-base md:text-lg">AR Viewer</h2>
         
         <div style={{ margin: '10px 0' }}>
