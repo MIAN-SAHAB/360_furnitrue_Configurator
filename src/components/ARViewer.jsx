@@ -595,6 +595,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
       <Canvas 
         shadows 
         camera={{ position: [0, 2, 6], fov: 35 }} 
+        className='cursor-grab active:cursor-grabbing'
         style={{ 
           width: '100%', 
           height: '100%', 
