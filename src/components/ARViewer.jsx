@@ -13,6 +13,14 @@ const PART_GROUP_LABELS = {
   body: 'Body',
 };
 
+const TEXTURE_OPTIONS = [
+  {
+    id: 'duffy-02',
+    name: 'Duffy 02',
+    url: '/textures/Duffy_02.jpg',
+  },
+];
+
 function inferPartGroup(partName = '') {
   const n = partName.toLowerCase();
   if (n.includes('leg') || n.includes('foot')) return 'legs';
@@ -70,6 +78,7 @@ function ARScene({
   lockToFloor,
   selectedGroup,
   groupColors,
+  groupTextures,
   onSelectPart,
   onPartsDiscovered,
   setInteracting // Notify parent if we are touching model
@@ -82,6 +91,7 @@ function ARScene({
   const raycasterRef = useRef(new THREE.Raycaster());
   const pointerRef = useRef(new THREE.Vector2());
   const [isFreeDragging, setIsFreeDragging] = useState(false);
+  const textureLoader = useMemo(() => new THREE.TextureLoader(), []);
   const { scene } = useGLTF(`/models/sofas/${selectedModel}.glb`);
   const clonedScene = useMemo(() => {
     const cloned = scene.clone(true);
@@ -99,6 +109,7 @@ function ARScene({
       child.userData.selectKey = selectKey;
       child.userData.displayName = displayName;
       child.userData.baseColor = child.material?.color?.clone?.();
+      child.userData.baseMap = child.material?.map || null;
       child.userData.partGroup = inferPartGroup(getMeshSemanticName(child));
       child.geometry?.computeBoundingBox?.();
       if (child.geometry?.boundingBox) {
@@ -144,6 +155,19 @@ function ARScene({
     return cloned;
   }, [scene]);
 
+  const textureCache = useMemo(() => {
+    const cache = {};
+    Object.values(groupTextures || {}).forEach((textureUrl) => {
+      if (!textureUrl || cache[textureUrl]) return;
+      const tex = textureLoader.load(textureUrl);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.flipY = false;
+      cache[textureUrl] = tex;
+    });
+    return cache;
+  }, [groupTextures, textureLoader]);
+
   const availableParts = useMemo(() => {
     const parts = [];
     const seen = new Set();
@@ -169,14 +193,27 @@ function ARScene({
       const mat = child.material;
       const partGroup = child.userData.partGroup || inferPartGroup(key || child.name || '');
       const explicitGroupColor = groupColors[partGroup];
+      const explicitGroupTexture = groupTextures[partGroup];
       const isFabric = child.name?.toLowerCase?.().includes('fabric');
 
-      if (explicitGroupColor) {
-        mat.color?.set?.(explicitGroupColor);
-      } else if (isFabric && child.userData.baseColor) {
-        mat.color?.copy?.(child.userData.baseColor);
-      } else if (child.userData.baseColor) {
-        mat.color?.copy?.(child.userData.baseColor);
+      if (explicitGroupTexture && textureCache[explicitGroupTexture]) {
+        mat.map = textureCache[explicitGroupTexture];
+        mat.needsUpdate = true;
+        mat.color?.set?.('#ffffff');
+      } else {
+        const baseMap = child.userData.baseMap || null;
+        if (mat.map !== baseMap) {
+          mat.map = baseMap;
+          mat.needsUpdate = true;
+        }
+
+        if (explicitGroupColor) {
+          mat.color?.set?.(explicitGroupColor);
+        } else if (isFabric && child.userData.baseColor) {
+          mat.color?.copy?.(child.userData.baseColor);
+        } else if (child.userData.baseColor) {
+          mat.color?.copy?.(child.userData.baseColor);
+        }
       }
 
       if ('emissive' in mat) {
@@ -189,7 +226,7 @@ function ARScene({
         }
       }
     });
-  }, [clonedScene, groupColors, selectedGroup]);
+  }, [clonedScene, groupColors, groupTextures, selectedGroup, textureCache]);
   
   const handlePartPointerDown = useCallback(
     (e) => {
@@ -292,14 +329,18 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
   const [parts, setParts] = useState([]);
   const [groups, setGroups] = useState([]);
   const [groupColors, setGroupColors] = useState({});
+  const [groupTextures, setGroupTextures] = useState({});
   const [groupColorInput, setGroupColorInput] = useState('#cc943c');
+  const [selectedTexture, setSelectedTexture] = useState('');
 
   useEffect(() => {
     setSelectedGroup(null);
     setParts([]);
     setGroups([]);
     setGroupColors({});
+    setGroupTextures({});
     setGroupColorInput('#cc943c');
+    setSelectedTexture('');
   }, [selectedModel]);
 
   const handleImageUpload = (e) => {
@@ -362,6 +403,40 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
   const clearSelectedGroupColor = () => {
     if (!selectedGroup) return;
     setGroupColors((prev) => {
+      const next = { ...prev };
+      delete next[selectedGroup];
+      return next;
+    });
+  };
+
+  const applyTexture = (textureUrl) => {
+    setSelectedTexture(textureUrl);
+
+    if (selectedGroup) {
+      setGroupTextures((prev) => ({
+        ...prev,
+        [selectedGroup]: textureUrl,
+      }));
+      return;
+    }
+
+    setGroupTextures((prev) => {
+      const next = { ...prev };
+      const targetGroups = groups.length > 0 ? groups : ['seat', 'back', 'arms', 'cushions', 'legs', 'body'];
+      targetGroups.forEach((groupKey) => {
+        next[groupKey] = textureUrl;
+      });
+      return next;
+    });
+  };
+
+  const clearSelectedGroupTexture = () => {
+    if (!selectedGroup) {
+      setGroupTextures({});
+      return;
+    }
+
+    setGroupTextures((prev) => {
       const next = { ...prev };
       delete next[selectedGroup];
       return next;
@@ -573,6 +648,39 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
           </div>
         </div>
 
+        <div style={{ margin: '10px 0' }}>
+          <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Textures</label>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {TEXTURE_OPTIONS.map((texture) => {
+              const isSelected = selectedTexture === texture.url;
+              return (
+                <button
+                  key={texture.id}
+                  onClick={() => applyTexture(texture.url)}
+                  className={`rounded border p-1 transition ${isSelected ? 'border-teal-600 ring-2 ring-teal-200' : 'border-gray-300'}`}
+                  title={texture.name}
+                >
+                  <img
+                    src={texture.url}
+                    alt={texture.name}
+                    className="h-16 w-full rounded object-cover"
+                  />
+                  <div className="mt-1 text-[11px] font-semibold text-gray-700">{texture.name}</div>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={clearSelectedGroupTexture}
+            className="w-full mt-2 rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700"
+          >
+            {selectedGroup ? 'Reset Group Texture' : 'Reset All Textures'}
+          </button>
+          <div style={{ marginTop: 6, fontSize: '11px', color: '#666' }}>
+            Click texture to apply {selectedGroup ? `to ${PART_GROUP_LABELS[selectedGroup] || selectedGroup}` : 'to the model'}.
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button onClick={handleReset} 
           className='bg-[#cc943c] text-white hover:bg-white hover:text-[#cc943c] border border-[#cc943c] transition-all duration-300 rounded p-2.5 text-sm'
@@ -614,6 +722,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
             lockToFloor={lockToFloor}
             selectedGroup={selectedGroup}
             groupColors={groupColors}
+            groupTextures={groupTextures}
             onSelectPart={handleSelectPart}
             onPartsDiscovered={(discoveredParts) => {
               setParts(discoveredParts);
