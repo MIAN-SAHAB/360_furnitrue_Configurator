@@ -84,6 +84,7 @@ function ARScene({
   setInteracting // Notify parent if we are touching model
 }) {
   const groupRef = useRef();
+  const modelOutlineRef = useRef(null);
   const { camera, gl } = useThree();
   const dragPlaneRef = useRef(new THREE.Plane());
   const dragOffsetRef = useRef(new THREE.Vector3());
@@ -217,16 +218,55 @@ function ARScene({
       }
 
       if ('emissive' in mat) {
-        if (partGroup === selectedGroup) {
-          mat.emissive.set('#14b8a6');
-          mat.emissiveIntensity = 0.35;
-        } else {
-          mat.emissive.set('#000000');
-          mat.emissiveIntensity = 0;
-        }
+        mat.emissive.set('#000000');
+        mat.emissiveIntensity = 0;
       }
+
     });
   }, [clonedScene, groupColors, groupTextures, selectedGroup, textureCache]);
+
+  useEffect(() => {
+    const removeOutline = () => {
+      if (!groupRef.current || !modelOutlineRef.current) return;
+      groupRef.current.remove(modelOutlineRef.current);
+      modelOutlineRef.current.traverse((child) => {
+        if (child.isMesh && child.material?.dispose) {
+          child.material.dispose();
+        }
+      });
+      modelOutlineRef.current = null;
+    };
+
+    if (!groupRef.current) return;
+
+    if (!selectedGroup) {
+      removeOutline();
+      return;
+    }
+
+    removeOutline();
+
+    const modelOutline = clonedScene.clone(true);
+    modelOutline.traverse((child) => {
+      if (!child.isMesh) return;
+      child.material = new THREE.MeshBasicMaterial({
+        color: '#ffffff',
+        transparent: true,
+        opacity: 0.5,
+        side: THREE.BackSide,
+        depthWrite: false,
+      });
+      child.renderOrder = 999;
+    });
+    modelOutline.scale.setScalar(1.015);
+
+    groupRef.current.add(modelOutline);
+    modelOutlineRef.current = modelOutline;
+
+    return () => {
+      removeOutline();
+    };
+  }, [clonedScene, selectedGroup]);
   
   const handlePartPointerDown = useCallback(
     (e) => {
@@ -398,6 +438,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
       ...prev,
       [selectedGroup]: groupColorInput,
     }));
+    setSelectedGroup(null);
   };
 
   const clearSelectedGroupColor = () => {
@@ -417,6 +458,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
         ...prev,
         [selectedGroup]: textureUrl,
       }));
+      setSelectedGroup(null);
       return;
     }
 
@@ -446,7 +488,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
   return (
     <div className="w-full h-full relative">
       
-      <div className="absolute top-3 left-3 z-50 md:hidden">
+      <div className="absolute top-3 left-5 z-50 md:hidden lg:block">
         <button
           onClick={() => setShowControls((prev) => !prev)}
           className="px-3 py-2 rounded-lg bg-white/95 text-gray-800 text-xs font-bold shadow border border-gray-200"
@@ -457,7 +499,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
 
       {/* --- UI Controls --- */}
       {showControls && (
-      <div className="absolute z-40 bg-white/95 p-3 md:p-4 rounded-xl shadow-[0_2px_12px_#0001] w-[calc(100%-1rem)] sm:w-85 max-h-[42vh] md:max-h-[calc(100%-2rem)] overflow-y-auto left-2 right-2 md:left-5 md:right-auto md:top-5 bottom-2 md:bottom-auto">
+      <div className="absolute z-40 bg-white/95 p-3 md:p-4 rounded-xl shadow-[0_2px_12px_#0001] w-[calc(100%-1rem)] sm:w-85 max-h-[42vh] md:max-h-[calc(100%-2rem)] overflow-y-auto left-2 right-2 md:left-5 md:right-auto md:top-15 bottom-2 md:bottom-auto">
         <h2 className="m-0 font-bold text-black text-base md:text-lg">AR Viewer</h2>
         
         <div style={{ margin: '10px 0' }}>
@@ -549,56 +591,56 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
             Lock to floor (Y=0)
           </label>
         </div>
-
+        
         <div style={{ margin: '10px 0' }}>
-          <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Move Object (360)</label>
-          <div className="grid grid-cols-3 gap-2 mt-2">
-            <div></div>
-            <button
-              onClick={() => nudgePosition(0, 0, -0.08)}
-              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
-            >
-              Forward
-            </button>
-            <div></div>
-            <button
-              onClick={() => nudgePosition(-0.08, 0, 0)}
-              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
-            >
-              Left
-            </button>
-            <button
-              onClick={() => nudgePosition(0, 0.08, 0)}
-              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
-            >
-              Up
-            </button>
-            <button
-              onClick={() => nudgePosition(0.08, 0, 0)}
-              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
-            >
-              Right
-            </button>
-            <div></div>
-            <button
-              onClick={() => nudgePosition(0, 0, 0.08)}
-              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
-            >
-              Back
-            </button>
-            <div></div>
-            <button
-              onClick={() => nudgePosition(0, -0.08, 0)}
-              className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
-            >
-              Down
-            </button>
-            <div></div>
+          <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Move Object</label>
+          <div className='flex flex-col justify-center items-center gap-2 mt-2'>
+            <div>
+              <button
+                onClick={() => nudgePosition(0, 0, -0.08)}
+                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+              >
+                Forward
+              </button>
+            </div>
+            <div className='flex flex-row justify-center gap-5'>
+              <button
+                onClick={() => nudgePosition(-0.08, 0, 0)}
+                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+              >
+                Left
+              </button>
+              <button
+                onClick={() => nudgePosition(0, 0.08, 0)}
+                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+              >
+                Up
+              </button>
+              <button
+                onClick={() => nudgePosition(0, -0.08, 0)}
+                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+              >
+                Down
+              </button>
+              <button
+                onClick={() => nudgePosition(0.08, 0, 0)}
+                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+              >
+                Right
+              </button>
+            </div>
+            <div>
+              <button
+                onClick={() => nudgePosition(0, 0, 0.08)}
+                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+              >
+                Back
+              </button>
+            </div>
           </div>
         </div>
 
-        <div style={{ margin: '10px 0' }}>
-          <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Selectable Groups</label>
+        <div style={{ margin: '10px 0' }} className={`${selectedGroup ? 'display-block' : 'hidden'}`}>
           <select
             value={selectedGroup || ''}
             onChange={(e) => {
@@ -610,7 +652,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
               setSelectedGroup(g);
               setGroupColorInput(groupColors[g] || '#cc943c');
             }}
-            className='text-black'
+            className='text-black hidden'
             style={{ width: '100%', padding: 8, borderRadius: 6, marginTop: 4, border: '1px solid #ccc' }}
           >
             <option value="">Select group (legs, cushion, ...)</option>
@@ -648,7 +690,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
           </div>
         </div>
 
-        <div style={{ margin: '10px 0' }}>
+        <div style={{ margin: '10px 0' }} className={`${selectedGroup ? 'display-block' : 'hidden'}`}>
           <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Textures</label>
           <div className="grid grid-cols-2 gap-2 mt-2">
             {TEXTURE_OPTIONS.map((texture) => {

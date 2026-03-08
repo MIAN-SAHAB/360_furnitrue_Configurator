@@ -15,7 +15,7 @@ import { LayoutDashboard, Package, Users, Palette, ShieldCheck, Database, Credit
 import { MOCK_PRODUCTS } from '../constants';
 import Configurator from './Configurator';
 
-const Homepage = ({ onNavigateToConfigurator }) => {
+const Homepage = ({ onNavigateToView }) => {
   const [view, setView] = useState(AppView.PUBLIC);
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(MOCK_PRODUCTS[0]);
@@ -31,6 +31,12 @@ const Homepage = ({ onNavigateToConfigurator }) => {
 
   const navigate = (newView) => {
     window.scrollTo(0, 0);
+
+    if (onNavigateToView) {
+      onNavigateToView(newView);
+      return;
+    }
+
     setView(newView);
   };
 

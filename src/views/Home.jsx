@@ -52,16 +52,19 @@ export const Home = ({ onNavigate }) => {
   const visualGallery = [
     {
       image: "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?auto=format&fit=crop&q=80&w=800",
+      video: "/assets/videos/video_1.mp4",
       alt: "Modern Living Room",
       label: "تصميم معاصر"
     },
     {
       image: "https://images.unsplash.com/photo-1598191383441-7c3a9928f6a0?auto=format&fit=crop&q=80&w=800",
+      video: "/assets/videos/video_2.mp4",
       alt: "Scandinavian Interior",
       label: "راحة وأناقة"
     },
     {
       image: "https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&q=80&w=800",
+      video: "/assets/videos/video_3.mp4",
       alt: "Minimal Luxury Furniture",
       label: "مساحات فاخرة"
     }
@@ -175,10 +178,17 @@ export const Home = ({ onNavigate }) => {
           <div className="mt-12 md:mt-16 grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8 animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
             {visualGallery.map((item, idx) => (
               <div key={idx} className="relative aspect-[16/10] rounded-[2rem] overflow-hidden group shadow-lg border border-gray-100/50">
-                <img 
+                {/* <img 
                   src={item.image} 
                   alt={item.alt} 
                   className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                /> */}
+                <video 
+                  src={item.video} 
+                  autoPlay
+                  loop
+                  muted
+                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                 />
                 <div className="absolute bottom-6 right-6 z-20">
                   <div className="bg-white/90 backdrop-blur-md px-5 py-2 rounded-full shadow-sm border border-white/20">
