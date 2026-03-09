@@ -438,7 +438,6 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
       ...prev,
       [selectedGroup]: groupColorInput,
     }));
-    setSelectedGroup(null);
   };
 
   const clearSelectedGroupColor = () => {
@@ -458,7 +457,6 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
         ...prev,
         [selectedGroup]: textureUrl,
       }));
-      setSelectedGroup(null);
       return;
     }
 
