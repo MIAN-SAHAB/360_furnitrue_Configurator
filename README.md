@@ -14,3 +14,16 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Deploying To Hostinger (SPA Routing)
+
+This project uses `react-router-dom` with `BrowserRouter`, so direct visits to nested routes like `/home` or `/theme-customizer` need a server rewrite rule.
+
+A `public/.htaccess` file is included so Vite copies it into `dist/.htaccess` during build.
+
+Deployment steps:
+1. Run `npm run build`.
+2. Upload all files from `dist/` to your Hostinger `public_html` folder.
+3. Make sure `.htaccess` exists in `public_html` after upload.
+
+If `.htaccess` is missing or ignored, deep links will return `404 Not Found`.
