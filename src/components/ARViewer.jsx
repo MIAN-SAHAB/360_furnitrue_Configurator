@@ -1,8 +1,10 @@
 import React, { useRef, useState, useMemo, Suspense, useCallback, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, useGLTF, Html } from '@react-three/drei';
+import { useSearchParams } from 'react-router-dom';
 import * as THREE from 'three';
-import defaultRoom from '/assets/room-picture.jpg'; // Ensure this path is correct for your project
+import QRCode from 'react-qr-code';
+import defaultRoom from '/assets/room-picture.jpg';
 
 const PART_GROUP_LABELS = {
   seat: 'Seat',
@@ -297,6 +299,12 @@ function ARScene({
   );
 
   useEffect(() => {
+    // If model source changes while dragging/interacting, clear interaction state.
+    setIsFreeDragging(false);
+    setInteracting(false);
+  }, [selectedModel, setInteracting]);
+
+  useEffect(() => {
     if (!isFreeDragging) return;
 
     const handlePointerMove = (event) => {
@@ -353,16 +361,22 @@ function ARScene({
 
 // --- Main Viewer Component ---
 const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fallbackModel = useMemo(() => {
+    if (defaultModel && modelNames.includes(defaultModel)) return defaultModel;
+    return modelNames[0];
+  }, [defaultModel, modelNames]);
+
   const [bgImage, setBgImage] = useState(defaultRoom);
-  const [selectedModel, setSelectedModel] = useState(defaultModel || modelNames[0]);
+  const selectedModel = useMemo(() => {
+    const fromUrl = searchParams.get('product');
+    if (fromUrl && modelNames.includes(fromUrl)) return fromUrl;
+    return fallbackModel;
+  }, [fallbackModel, modelNames, searchParams]);
   const [showControls, setShowControls] = useState(true);
-  
-  // Model State
   const [modelPosition, setModelPosition] = useState(DEFAULT_MODEL_POSITION);
   const [modelScale, setModelScale] = useState(DEFAULT_MODEL_SCALE);
   const [modelRotation, setModelRotation] = useState(DEFAULT_MODEL_ROTATION);
-  
-  // Interaction State (lifts up from Scene to disable OrbitControls)
   const [isInteracting, setInteracting] = useState(false);
   const [lockToFloor, setLockToFloor] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -372,6 +386,27 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
   const [groupTextures, setGroupTextures] = useState({});
   const [groupColorInput, setGroupColorInput] = useState('#cc943c');
   const [selectedTexture, setSelectedTexture] = useState('');
+  const qrCodeRef = useRef(null);
+  
+  const handleModelChange = useCallback(
+    (nextModel) => {
+      if (!modelNames.includes(nextModel)) return;
+      const next = new URLSearchParams(searchParams);
+      next.set('product', nextModel);
+      setSearchParams(next, { replace: true });
+    },
+    [modelNames, searchParams, setSearchParams]
+  );
+
+  useEffect(() => {
+    if (!selectedModel) return;
+    const current = searchParams.get('product');
+    if (current === selectedModel) return;
+
+    const next = new URLSearchParams(searchParams);
+    next.set('product', selectedModel);
+    setSearchParams(next, { replace: true });
+  }, [modelNames, searchParams, selectedModel, setSearchParams]);
 
   useEffect(() => {
     setSelectedGroup(null);
@@ -483,6 +518,42 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
     });
   };
 
+  const downloadQRCode = () => {
+    // 1. Get the SVG element
+    const svg = qrCodeRef.current.querySelector('svg');
+    if (!svg) return;
+
+    // 2. Serialize the SVG to a string
+    const svgData = new XMLSerializer().serializeToString(svg);
+    
+    // 3. Create a temporary canvas and Image object
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+
+    // 4. When the image loads, draw it to the canvas and trigger download
+    img.onload = () => {
+      // Match canvas dimensions to the image
+      canvas.width = 256;
+      canvas.height = 256;
+      
+      // Draw the SVG image onto the canvas
+      ctx.drawImage(img, 0, 0, 256, 256);
+      
+      // Now we can use toDataURL safely!
+      const pngFile = canvas.toDataURL("image/png");
+      
+      // Trigger the download
+      const downloadLink = document.createElement("a");
+      downloadLink.download = `${selectedModel}-QR.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+
+    // 5. Set the image source to the SVG data
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+  };
+
   return (
     <div className="w-full h-full relative">
       
@@ -504,7 +575,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
           <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Model</label>
           <select 
             value={selectedModel} 
-            onChange={e => setSelectedModel(e.target.value)} 
+            onChange={(e) => handleModelChange(e.target.value)} 
             className='text-black'
             style={{ width: '100%', padding: 8, borderRadius: 6, marginTop: 4, border: '1px solid #ccc' }}
           >
@@ -589,6 +660,20 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
             Lock to floor (Y=0)
           </label>
         </div>
+
+        <div style={{ margin: '10px 0' }}>
+          <div className='flex flex-row justify-between items-center'>
+            <button
+              onClick={downloadQRCode}
+              className="rounded cursor-pointer p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+            >
+              Download QR Code
+            </button>
+            <div ref={qrCodeRef} className='p-4'>
+              <QRCode value={window.location.href}  size={128} level={'H'}></QRCode>
+            </div>
+          </div>
+        </div>
         
         <div style={{ margin: '10px 0' }}>
           <label style={{ fontWeight: 600, color: 'black', fontSize: 13 }}>Move Object</label>
@@ -596,41 +681,41 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
             <div>
               <button
                 onClick={() => nudgePosition(0, 0, -0.08)}
-                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+                className="rounded cursor-pointer p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
               >
                 Forward
               </button>
             </div>
             <div className='flex flex-row justify-center gap-5'>
               <button
-                onClick={() => nudgePosition(-0.08, 0, 0)}
-                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+                onClick={() => nudgePosition(0.08, 0, 0)}
+                className="rounded cursor-pointer p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
               >
-                Left
+                Right
               </button>
               <button
                 onClick={() => nudgePosition(0, 0.08, 0)}
-                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+                className="rounded cursor-pointer p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
               >
                 Up
               </button>
               <button
                 onClick={() => nudgePosition(0, -0.08, 0)}
-                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+                className="rounded cursor-pointer p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
               >
                 Down
               </button>
               <button
-                onClick={() => nudgePosition(0.08, 0, 0)}
-                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+                onClick={() => nudgePosition(-0.08, 0, 0)}
+                className="rounded cursor-pointer p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
               >
-                Right
+                Left
               </button>
             </div>
             <div>
               <button
                 onClick={() => nudgePosition(0, 0, 0.08)}
-                className="rounded p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
+                className="rounded cursor-pointer p-2 text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
               >
                 Back
               </button>
@@ -754,6 +839,7 @@ const ARViewer = ({ modelUrl, modelNames, defaultModel, onBack }) => {
       >
         <Suspense fallback={<Html center><h2>Loading...</h2></Html>}>
           <ARScene
+            key={selectedModel}
             selectedModel={selectedModel}
             modelPosition={modelPosition}
             setModelPosition={setModelPosition}

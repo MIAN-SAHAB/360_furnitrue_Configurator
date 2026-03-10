@@ -8,7 +8,7 @@ import ARViewer from './ARViewer';
  * Add your filenames here (without .glb). 
  * In a real-world scenario, you could fetch this list from an API.
  */
-const MODEL_NAMES = ["SOFA-new","sofa","wooden_sofa" , "1", "SOFA-1-PARTS", "KLUN-STYLE-SOFA", "SOFA-1", "SOFA-2", "Arm-Chair-1", "Arm-Chair-2", "SOFA-4", "SOFA-5", "SQUARE-SOFA", "YELLOW-SOFA", "Double-Sofa", "K01-1s-PS", "K01-2s-PS", "K01-3s-1rL-oD-GS"];
+const MODEL_NAMES = ["SOFA-new","wooden_sofa" , "1", "SOFA-1-PARTS", "KLUN-STYLE-SOFA", "SOFA-1", "SOFA-2", "Arm-Chair-1", "Arm-Chair-2", "SOFA-4", "SOFA-5", "SQUARE-SOFA", "YELLOW-SOFA", "Double-Sofa", "K01-1s-PS", "K01-2s-PS", "K01-3s-1rL-oD-GS"];
 
 // --- 3D Model Component ---
 function Model({ url, color }) {
