@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, useRef, React } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Menu, Search, ShoppingBag, User as UserIcon, LogOut, Settings, LayoutDashboard, Database, Palette, Users, ChevronDown, Facebook, Twitter, Instagram, Mail, Phone, MapPin } from 'lucide-react';
 import { COLORS } from '../constants';
@@ -12,6 +12,8 @@ import { COLORS } from '../constants';
  */
 
 export default function Header({ user }) {
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  
   return (
     <header className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 md:py-4 flex items-center justify-between gap-2 md:gap-4">
@@ -21,7 +23,7 @@ export default function Header({ user }) {
                 <img src="assets/360 logo.png" alt="" />
               </a>
             </div>
-            <nav className="hidden xl:flex gap-6 text-sm font-bold text-gray-600">
+            <nav className={ showMobileMenu ? 'flex flex-col xl:hidden absolute top-[101%] left-0 w-full bg-white border-t border-gray-100 p-4 animate-in fade-in zoom-in duration-500' : 'hidden'}>
               <a href="/" className="cursor-pointer hover:text-teal-600 transition">الرئيسية</a>
               <a href="/themes" className="cursor-pointer hover:text-teal-600 transition">الثيمات</a>
               <a href="/configurator" className="cursor-pointer hover:text-teal-600 transition">مكون</a>
@@ -97,7 +99,7 @@ export default function Header({ user }) {
             )}
 
             <button
-            //   onClick={() => setShowMobileMenu((prev) => !prev)}
+              onClick={() => setShowMobileMenu((prev) => !prev)}
               className="xl:hidden p-2 rounded-xl hover:bg-gray-100 transition"
               aria-label="Toggle menu"
             >
