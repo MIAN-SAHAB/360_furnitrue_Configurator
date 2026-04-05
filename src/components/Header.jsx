@@ -23,7 +23,8 @@ export default function Header({ user }) {
                 <img src="assets/360 logo.png" alt="" />
               </a>
             </div>
-            <nav className={ showMobileMenu ? 'flex flex-col xl:hidden absolute top-[101%] left-0 w-full bg-white border-t border-gray-100 p-4 animate-in fade-in zoom-in duration-500' : 'hidden'}>
+            <nav className={ showMobileMenu ? 'flex flex-col absolute top-[101%] left-0 w-full bg-white border-t border-gray-100 p-4 animate-in fade-in zoom-in duration-500' : 
+              'hidden xl:flex xl:gap-6 xl:text-sm xl:font-bold xl:text-gray-600'}>
               <a href="/" className="cursor-pointer hover:text-teal-600 transition">الرئيسية</a>
               <a href="/themes" className="cursor-pointer hover:text-teal-600 transition">الثيمات</a>
               <a href="/configurator" className="cursor-pointer hover:text-teal-600 transition">مكون</a>
